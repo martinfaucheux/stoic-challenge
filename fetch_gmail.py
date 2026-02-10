@@ -11,8 +11,27 @@ Usage:
     python fetch_gmail.py
 """
 
+from pathlib import Path
+
 from gmail_service import fetch_gmail_messages
 from models import Email
+
+
+def save_email_to_json(email: Email, output_dir: Path):
+    """Save email to JSON file using Pydantic serialization"""
+    # Create output directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create filename from email ID and timestamp
+    timestamp = email.received_at.strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{email.id}.json"
+    filepath = output_dir / filename
+
+    # Save using Pydantic's built-in JSON serialization
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(email.model_dump_json(indent=2))
+
+    return filepath
 
 
 def display_email(email: Email, index: int):
@@ -65,13 +84,23 @@ def main():
             print("\nNo emails found.")
             return
 
-        # Display each email
+        # Create output directory
+        output_dir = Path("emails")
+
+        # Display and save each email
+        saved_files = []
         for i, email in enumerate(emails, 1):
             display_email(email, i)
+
+            # Save email to JSON
+            filepath = save_email_to_json(email, output_dir)
+            saved_files.append(filepath)
+            print(f"💾 Saved to: {filepath}")
 
         # Summary
         print(f"\n{'=' * 80}")
         print(f"Summary: Successfully fetched {len(emails)} email(s)")
+        print(f"Emails saved to: {output_dir.absolute()}")
         print(f"{'=' * 80}")
 
     except FileNotFoundError as e:

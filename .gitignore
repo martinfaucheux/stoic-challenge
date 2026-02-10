@@ -218,3 +218,6 @@ __marimo__/
 credentials.json
 token.json
 .env
+
+# Fetched emails data
+emails/
