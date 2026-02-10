@@ -17,9 +17,11 @@ class Settings:
 
     # Gmail API settings
     GMAIL_CREDENTIALS_FILE = os.getenv(
-        "GMAIL_CREDENTIALS_FILE", str(BASE_DIR / "credentials.json")
+        "GMAIL_CREDENTIALS_FILE", str(BASE_DIR / "gmail" / "credentials.json")
     )
-    GMAIL_TOKEN_FILE = os.getenv("GMAIL_TOKEN_FILE", str(BASE_DIR / "token.json"))
+    GMAIL_TOKEN_FILE = os.getenv(
+        "GMAIL_TOKEN_FILE", str(BASE_DIR / "gmail" / "token.json")
+    )
     GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
     # Email fetching settings

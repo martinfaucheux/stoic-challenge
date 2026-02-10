@@ -8,13 +8,14 @@ This script demonstrates how to:
 4. Display email information
 
 Usage:
-    python fetch_gmail.py
+    python -m gmail.fetch_gmail
 """
 
 from pathlib import Path
 
-from gmail_service import fetch_gmail_messages
 from models import Email
+
+from .service import fetch_gmail_messages
 
 
 def save_email_to_json(email: Email, output_dir: Path):
@@ -85,7 +86,7 @@ def main():
             return
 
         # Create output directory
-        output_dir = Path("emails")
+        output_dir = Path("fetched_emails")
 
         # Display and save each email
         saved_files = []

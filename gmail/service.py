@@ -3,8 +3,8 @@
 from typing import List, Optional
 
 from config import settings
-from gmail_auth import get_gmail_service
-from gmail_parser import parse_gmail_message
+from .auth import get_gmail_service
+from .parser import parse_gmail_message
 from models import Email
 
 

@@ -220,4 +220,4 @@ token.json
 .env
 
 # Fetched emails data
-emails/
+fetched_emails/
