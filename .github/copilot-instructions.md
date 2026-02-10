@@ -7,7 +7,7 @@ The goal is to code the service retrieving the emails.
 ## Requirements
 
 - Build the service in Python with FastAPI
-- Use PostgreSQL
+- Use PostgreSQL with sqlalchemy for data storage
 - Dockerize the service
 - Tests
 

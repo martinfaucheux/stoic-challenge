@@ -27,5 +27,11 @@ class Settings:
     # Email fetching settings
     MAX_EMAILS_TO_FETCH = int(os.getenv("MAX_EMAILS_TO_FETCH", "10"))
 
+    # Database settings
+    DATABASE_URL = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/email_security",
+    )
+
 
 settings = Settings()
