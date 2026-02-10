@@ -11,10 +11,12 @@ Usage:
     python -m gmail.fetch_gmail
 """
 
+import asyncio
 from pathlib import Path
 
 from models import Email
 
+from .db_helpers import save_emails_to_db
 from .service import fetch_gmail_messages
 
 
@@ -97,6 +99,13 @@ def main():
             filepath = save_email_to_json(email, output_dir)
             saved_files.append(filepath)
             print(f"💾 Saved to: {filepath}")
+
+        # Save emails to database
+        try:
+            inserted_count = asyncio.run(save_emails_to_db(emails))
+            print(f"🗄️  Saved {inserted_count}/{len(emails)} email(s) to the database")
+        except Exception as e:
+            print(f"⚠️  Failed to save emails to the database: {e}")
 
         # Summary
         print(f"\n{'=' * 80}")
