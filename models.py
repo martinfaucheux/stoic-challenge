@@ -67,6 +67,12 @@ class EmailTable(Base):
     raw_data: Mapped[Dict[str, Any]] = mapped_column(
         JSON, nullable=False, default=dict, comment="Original provider data"
     )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="User who owns this email",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -98,6 +104,7 @@ class Email(BaseModel):
     )
     subject: str
     body: str = Field(..., description="Plain text or HTML")
+    body_text: str = Field(..., description="Plain text body")
     body_html: Optional[str] = Field(None, description="HTML version if available")
     received_at: datetime
     headers: Dict[str, str] = Field(
