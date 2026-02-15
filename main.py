@@ -3,9 +3,16 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import Token, create_access_token, get_current_user
+from auth import (
+    Token,
+    create_access_token,
+    create_oauth_state_token,
+    get_current_user,
+    verify_oauth_state_token,
+)
 from config import settings
 from database import get_db
 from models import User, UserCreate, UserTable
@@ -77,9 +84,13 @@ async def configure_google_email(
     consent screen. After user authorization, they will be redirected back to
     the callback endpoint.
     """
+
     try:
-        # Generate OAuth authorization URL
-        auth_url = google_oauth_service.generate_authorization_url()
+        # Create secure state token with user ID
+        state_token = create_oauth_state_token(str(current_user.id))
+
+        # Generate OAuth authorization URL with state
+        auth_url = google_oauth_service.generate_authorization_url(state=state_token)
 
         return {
             "authorization_url": auth_url,
@@ -119,6 +130,30 @@ async def google_oauth_callback(
         )
 
     try:
+        # Verify state parameter and get user ID
+        if not state:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="State parameter is required for security",
+            )
+
+        user_id = verify_oauth_state_token(state)
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired state parameter",
+            )
+
+        # Verify user exists in database
+        query = select(UserTable).where(UserTable.id == user_id)
+        result = await db.execute(query)
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
         # Exchange code for tokens
         token_response = await google_oauth_service.exchange_code_for_tokens(code)
 
@@ -127,12 +162,21 @@ async def google_oauth_callback(
             token_response["access_token"]
         )
 
-        # TODO: save the token to the UserEmailConfiguration for the current user
+        # Save the token configuration to the database
+        await google_oauth_service.save_user_configuration(
+            db=db,
+            user_id=user_id,
+            access_token=token_response["access_token"],
+            refresh_token=token_response.get("refresh_token"),
+            expires_in=token_response.get("expires_in"),
+            token_type=token_response.get("token_type", "Bearer"),
+        )
 
         return {
             "status": "success",
             "message": "Google account connected successfully",
             "user_email": user_info.get("email"),
+            "google_email": user_info.get("email"),
             "redirect_url": f"{settings.BASE_URL}/dashboard",  # Frontend dashboard URL
         }
 

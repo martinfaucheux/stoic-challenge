@@ -72,6 +72,7 @@ class GoogleOAuthService:
 
         Returns:
             Token response containing access_token, refresh_token, expires_in, etc.
+            Also adds 'expires_at' field with calculated expiration timestamp.
 
         Raises:
             httpx.HTTPError: If token exchange fails
@@ -98,7 +99,8 @@ class GoogleOAuthService:
             refresh_token: Valid refresh token
 
         Returns:
-            Token response with new access_token and expires_in
+            Token response with new access_token and expires_in.
+            Also adds 'expires_at' field with calculated expiration timestamp.
 
         Raises:
             httpx.HTTPError: If token refresh fails
@@ -140,7 +142,10 @@ class GoogleOAuthService:
         self,
         db: AsyncSession,
         user_id: str,
-        token_response: Dict[str, Any],
+        access_token: str,
+        refresh_token: str | None = None,
+        expires_in: int | None = None,
+        token_type: str = "Bearer",
     ) -> UserEmailConfiguration:
         """
         Save OAuth tokens to user's email configuration
@@ -148,7 +153,11 @@ class GoogleOAuthService:
         Args:
             db: Database session
             user_id: User UUID
-            token_response: Token response from Google OAuth
+            access_token: OAuth access token
+            refresh_token: OAuth refresh token (optional)
+            expires_at: Token expiration datetime (optional)
+            expires_in: Token expiration in seconds (fallback if expires_at not provided)
+            token_type: Token type (default: "Bearer")
 
         Returns:
             Created or updated UserEmailConfiguration
@@ -158,21 +167,22 @@ class GoogleOAuthService:
         ):
             raise ValueError("Google OAuth credentials not configured")
 
-        # Calculate token expiration
-        expires_in = token_response.get("expires_in", 3600)  # Default 1 hour
-        expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        # Use the provided expiration time or calculate it from expires_in
+        expires_at = (
+            datetime.utcnow() + timedelta(seconds=expires_in) if expires_in else None
+        )
 
         # Encrypt tokens
-        access_token_encrypted = encrypt_token(token_response["access_token"])
+        access_token_encrypted = encrypt_token(access_token)
         refresh_token_encrypted = None
-        if "refresh_token" in token_response:
-            refresh_token_encrypted = encrypt_token(token_response["refresh_token"])
+        if refresh_token:
+            refresh_token_encrypted = encrypt_token(refresh_token)
 
-        stmt = select(UserEmailConfiguration).where(
+        query = select(UserEmailConfiguration).where(
             UserEmailConfiguration.user_id == user_id,
             UserEmailConfiguration.provider == "google",
         )
-        result = await db.execute(stmt)
+        result = await db.execute(query)
         existing_config = result.scalar_one_or_none()
 
         if existing_config:
@@ -194,7 +204,7 @@ class GoogleOAuthService:
                     token_expires_at=expires_at,
                     provider_config={
                         "scopes": settings.GOOGLE_OAUTH_SCOPES,
-                        "token_type": token_response.get("token_type", "Bearer"),
+                        "token_type": token_type,
                     },
                 )
                 .returning(UserEmailConfiguration)
@@ -215,7 +225,7 @@ class GoogleOAuthService:
                 token_expires_at=expires_at,
                 provider_config={
                     "scopes": settings.GOOGLE_OAUTH_SCOPES,
-                    "token_type": token_response.get("token_type", "Bearer"),
+                    "token_type": token_type,
                 },
             )
             db.add(config)
@@ -240,7 +250,6 @@ class GoogleOAuthService:
         Raises:
             ValueError: If token refresh fails
         """
-        from sqlalchemy import select
 
         stmt = select(UserEmailConfiguration).where(
             UserEmailConfiguration.user_id == user_id,
@@ -268,7 +277,14 @@ class GoogleOAuthService:
             token_response = await self.refresh_access_token(refresh_token)
 
             # Update configuration with new token
-            await self.save_user_configuration(db, user_id, token_response)
+            await self.save_user_configuration(
+                db=db,
+                user_id=user_id,
+                access_token=token_response["access_token"],
+                refresh_token=token_response.get("refresh_token"),
+                expires_in=token_response.get("expires_in"),
+                token_type=token_response.get("token_type", "Bearer"),
+            )
 
             return token_response["access_token"]
         except httpx.HTTPError as e:

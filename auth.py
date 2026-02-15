@@ -47,6 +47,40 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
+def create_oauth_state_token(
+    user_id: str, expires_delta: timedelta | None = None
+) -> str:
+    """Create a secure state token for OAuth flow with user ID"""
+    to_encode = {"user_id": user_id}
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=30
+        )  # 30 min for OAuth flow
+    to_encode.update({"exp": expire.isoformat()})
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ENCRYPTION_ALGORITHM
+    )
+    return encoded_jwt
+
+
+def verify_oauth_state_token(state_token: str) -> str | None:
+    """Verify OAuth state token and return user ID"""
+    try:
+        payload = jwt.decode(
+            state_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.JWT_ENCRYPTION_ALGORITHM],
+        )
+        user_id: str = payload["user_id"]
+        if user_id is None:
+            return None
+        return user_id
+    except (InvalidTokenError, KeyError):
+        return None
+
+
 async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
     token: Annotated[str, Depends(oauth2_scheme)],
