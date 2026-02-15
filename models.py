@@ -1,8 +1,10 @@
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
-from sqlalchemy import JSON, DateTime, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, DateTime, Index, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -14,7 +16,9 @@ class EmailTable(Base):
 
     __tablename__ = "emails"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     message_id: Mapped[str] = mapped_column(
         String(255), nullable=False, index=True, comment="Provider-specific message ID"
     )
@@ -106,7 +110,7 @@ class Email(BaseModel):
 class User(BaseModel):
     """User model for authentication"""
 
-    id: Optional[int] = Field(None, description="User ID (database primary key)")
+    id: Optional[uuid.UUID] = Field(None, description="User ID (database primary key)")
     email: str = Field(..., description="User email address")
 
 
@@ -120,7 +124,9 @@ class UserTable(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     email: Mapped[str] = mapped_column(
         String(255), nullable=False, comment="User email address"
     )
