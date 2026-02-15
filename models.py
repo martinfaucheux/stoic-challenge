@@ -110,6 +110,11 @@ class User(BaseModel):
     email: str = Field(..., description="User email address")
 
 
+class UserCreate(BaseModel):
+    email: str = Field(..., description="User email address")
+    password: str = Field(..., min_length=8, description="User password")
+
+
 class UserTable(Base):
     """SQLAlchemy model for storing users in database"""
 

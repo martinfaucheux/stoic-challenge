@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import get_db
-from models import UserTable
+from models import User, UserCreate, UserTable
 
 app = FastAPI(title="Email Security Tool")
 
@@ -101,6 +101,36 @@ async def get_current_user(
     return user
 
 
+async def create_user(db: AsyncSession, user: UserCreate) -> UserTable:
+    """Create a new user in the database"""
+    user_obj = UserTable(
+        email=user.email,
+        password_hash=get_password_hash(user.password),
+    )
+    try:
+        db.add(user_obj)
+        await db.commit()
+        await db.refresh(user_obj)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A user with this email already exists.",
+        )
+    return user_obj
+
+
+@app.post("/register")
+async def register_user(
+    user: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]
+) -> User:
+    """
+    create a new user
+    """
+    user_obj = await create_user(db, user)
+    return User(id=user_obj.id, email=user_obj.email)
+
+
 @app.post("/token")
 async def login_for_access_token(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -131,6 +161,14 @@ async def get_emails(db: Annotated[AsyncSession, Depends(get_db)]):
     """Get all emails from the database"""
     # TODO: Implement email retrieval
     return {"emails": []}
+
+
+@app.get("/protected")
+async def protected_route(
+    current_user: Annotated[UserTable, Depends(get_current_user)],
+):
+    """Example protected route that requires authentication"""
+    return {"message": f"Hello, {current_user.email}! This is a protected route."}
 
 
 @app.post("/webhook")
