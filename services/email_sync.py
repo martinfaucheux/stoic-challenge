@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -133,48 +134,107 @@ class EmailSyncService:
 
     async def _save_emails(self, emails: list[Email], user_id: uuid.UUID) -> int:
         """
-        Save emails to database, avoiding duplicates
+        Save emails to database using bulk UPSERT, avoiding duplicates efficiently
 
         Returns:
             Number of emails actually saved (new emails only)
         """
+        if not emails:
+            return 0
+
+        # Process emails in batches to avoid memory issues with large datasets
+        batch_size = 1000
+        total_saved = 0
+
+        for i in range(0, len(emails), batch_size):
+            batch = emails[i : i + batch_size]
+            batch_saved = await self._save_email_batch(batch, user_id)
+            total_saved += batch_saved
+
+        return total_saved
+
+    async def _save_email_batch(self, emails: list[Email], user_id: uuid.UUID) -> int:
+        """
+        Save a batch of emails using PostgreSQL UPSERT for optimal performance
+
+        Returns:
+            Number of emails actually saved (new emails only)
+        """
+        # Convert Email objects to dict format for bulk operations
+        email_data = [
+            {
+                "message_id": email.id,
+                "provider": email.provider,
+                "sender": email.sender,
+                "recipient": email.recipient,
+                "recipients_cc": email.recipients_cc or [],
+                "recipients_bcc": email.recipients_bcc or [],
+                "subject": email.subject,
+                "body_text": email.body_text,
+                "body_html": email.body_html,
+                "received_at": email.received_at,
+                "headers": email.headers or {},
+                "attachments": email.attachments or [],
+                "raw_data": email.raw_data or {},
+                "user_id": user_id,
+            }
+            for email in emails
+        ]
+
+        try:
+            # PostgreSQL UPSERT: insert new records, ignore conflicts on unique constraint
+            stmt = insert(EmailTable).values(email_data)
+            stmt = stmt.on_conflict_do_nothing(
+                index_elements=["message_id", "provider"]
+            ).returning(EmailTable.id)
+
+            result = await self.db.execute(stmt)
+            await self.db.commit()
+
+            # Count the number of rows actually inserted by counting returned IDs
+            inserted_rows = result.fetchall()
+            return len(inserted_rows)
+
+        except Exception as e:
+            await self.db.rollback()
+            print(f"Error during bulk email save: {e}")
+            # Fallback to individual saves if bulk operation fails
+            return await self._save_emails_individually(emails, user_id)
+
+    async def _save_emails_individually(
+        self, emails: list[Email], user_id: uuid.UUID
+    ) -> int:
+        """
+        Fallback method: save emails one by one if bulk operation fails
+        """
         saved_count = 0
 
-        # TODO: improve the bulk saving logic to minimize database calls and handle duplicates more efficiently
         for email in emails:
-            # Check if email already exists
-            existing = await self._email_exists(email.id, email.provider)
-            if existing:
+            try:
+                email_record = EmailTable(
+                    message_id=email.id,
+                    provider=email.provider,
+                    sender=email.sender,
+                    recipient=email.recipient,
+                    recipients_cc=email.recipients_cc or [],
+                    recipients_bcc=email.recipients_bcc or [],
+                    subject=email.subject,
+                    body_text=email.body_text,
+                    body_html=email.body_html,
+                    received_at=email.received_at,
+                    headers=email.headers or {},
+                    attachments=email.attachments or [],
+                    raw_data=email.raw_data or {},
+                    user_id=user_id,
+                )
+
+                self.db.add(email_record)
+                await self.db.commit()
+                saved_count += 1
+
+            except Exception:
+                # Skip duplicate emails or other individual failures
+                await self.db.rollback()
                 continue
 
-            # Create new email record
-            email_record = EmailTable(
-                message_id=email.id,
-                provider=email.provider,
-                sender=email.sender,
-                recipient=email.recipient,
-                recipients_cc=email.recipients_cc,
-                recipients_bcc=email.recipients_bcc,
-                subject=email.subject,
-                body_text=email.body_text,
-                body_html=email.body_html,
-                received_at=email.received_at,
-                headers=email.headers,
-                attachments=email.attachments,
-                raw_data=email.raw_data,
-                user_id=user_id,  # Associate email with user
-            )
-
-            self.db.add(email_record)
-            saved_count += 1
-
-        await self.db.commit()
         return saved_count
-
-    async def _email_exists(self, message_id: str, provider: str) -> bool:
-        """Check if email already exists in database"""
-        stmt = select(EmailTable).where(
-            EmailTable.message_id == message_id, EmailTable.provider == provider
-        )
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none() is not None
