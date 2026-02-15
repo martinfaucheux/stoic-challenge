@@ -103,6 +103,18 @@ class Email(BaseModel):
         json_encoders = {datetime: lambda v: v.isoformat()}
 
 
+class User(BaseModel):
+    """User model for authentication"""
+
+    id: Optional[int] = Field(None, description="User ID (database primary key)")
+    email: str = Field(..., description="User email address")
+
+
+class UserCreate(BaseModel):
+    email: str = Field(..., description="User email address")
+    password: str = Field(..., min_length=8, description="User password")
+
+
 class UserTable(Base):
     """SQLAlchemy model for storing users in database"""
 
