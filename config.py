@@ -41,8 +41,24 @@ class Settings:
         os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30")
     )
 
+    # OAuth settings
+    GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+    GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+    GOOGLE_OAUTH_REDIRECT_URI = os.getenv(
+        "GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8000/auth/callback/google"
+    )
+    GOOGLE_OAUTH_SCOPES = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "openid",
+        "email",
+        "profile",
+    ]
 
     # Token encryption settings
     FERNET_ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+
+    # Application base URL
+    BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+
 
 settings = Settings()
