@@ -58,7 +58,7 @@ def create_oauth_state_token(
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=30
         )  # 30 min for OAuth flow
-    to_encode.update({"exp": expire.isoformat()})
+    to_encode.update({"exp": expire})  # type: ignore
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ENCRYPTION_ALGORITHM
     )
