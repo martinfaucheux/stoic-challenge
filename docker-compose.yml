@@ -18,7 +18,9 @@ services:
       retries: 5
 
   web:
+    # TODO: For production, remove --reload command and source code volume mount below
     build: .
+    command: [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
     ports:
       - "8000:8000"
     environment:
@@ -27,6 +29,7 @@ services:
       GMAIL_TOKEN_FILE: ${GMAIL_TOKEN_FILE:-/app/gmail/token.json}
       MAX_EMAILS_TO_FETCH: ${MAX_EMAILS_TO_FETCH:-10}
     volumes:
+      - .:/app # TODO: For production, remove this full directory mount
       - ./gmail:/app/gmail
     depends_on:
       db:
