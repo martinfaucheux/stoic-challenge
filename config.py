@@ -42,4 +42,7 @@ class Settings:
     )
 
 
+    # Token encryption settings
+    FERNET_ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+
 settings = Settings()
