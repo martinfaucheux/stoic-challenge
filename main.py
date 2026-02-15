@@ -1,123 +1,17 @@
-from datetime import datetime, timedelta, timezone
-from typing import Annotated, Optional
+from datetime import timedelta
+from typing import Annotated
 
-import jwt
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
-from pwdlib import PasswordHash
-from pydantic import BaseModel
-from sqlalchemy import select
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth import Token, create_access_token, get_current_user
 from config import settings
 from database import get_db
 from models import User, UserCreate, UserTable
+from services.user import authenticate_user, create_user
 
 app = FastAPI(title="Email Security Tool")
-
-
-password_hash = PasswordHash.recommended()
-
-DUMMY_HASH = password_hash.hash("dummypassword")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class TokenData(BaseModel):
-    email: str | None = None
-
-
-def verify_password(plain_password, hashed_password):
-    return password_hash.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return password_hash.hash(password)
-
-
-async def get_user(db: AsyncSession, email: str) -> Optional[UserTable]:
-    """Get user by email (wrapper for compatibility)"""
-    result = await db.execute(select(UserTable).where(UserTable.email == email))
-    return result.scalar_one_or_none()
-
-
-async def authenticate_user(db: AsyncSession, username: str, password: str):
-    """Authenticate user with database lookup"""
-    user = await get_user(db, username)
-    if not user:
-        verify_password(password, DUMMY_HASH)
-        return False
-    if not verify_password(password, user.password_hash):
-        return False
-    return user
-
-
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ENCRYPTION_ALGORITHM
-    )
-    return encoded_jwt
-
-
-async def get_current_user(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    token: Annotated[str, Depends(oauth2_scheme)],
-):
-    """Get current authenticated user from JWT token"""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.JWT_ENCRYPTION_ALGORITHM]
-        )
-        email = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-        token_data = TokenData(email=email)
-    except InvalidTokenError:
-        raise credentials_exception
-
-    if not isinstance(token_data.email, str):
-        raise credentials_exception
-
-    user = await get_user(db, email=token_data.email)
-    if user is None:
-        raise credentials_exception
-    return user
-
-
-async def create_user(db: AsyncSession, user: UserCreate) -> UserTable:
-    """Create a new user in the database"""
-    user_obj = UserTable(
-        email=user.email,
-        password_hash=get_password_hash(user.password),
-    )
-    try:
-        db.add(user_obj)
-        await db.commit()
-        await db.refresh(user_obj)
-    except Exception:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists.",
-        )
-    return user_obj
 
 
 @app.post("/register")
