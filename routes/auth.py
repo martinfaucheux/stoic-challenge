@@ -6,14 +6,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import (
+from config import settings
+from models import User, UserCreate, UserTable
+from services.auth import (
     Token,
     create_access_token,
     verify_oauth_state_token,
 )
-from config import settings
-from database import get_db
-from models import User, UserCreate, UserTable
+from services.database import get_db
 from services.oauth.google import google_oauth_service
 from services.user import authenticate_user, create_user
 

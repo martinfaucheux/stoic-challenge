@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
-from database import get_db
+from services.database import get_db
 
 # Global objects for auth
 password_hash = PasswordHash.recommended()

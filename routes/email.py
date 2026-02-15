@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import create_oauth_state_token, get_current_user
-from database import get_db
 from models import EmailTable, UserEmailConfiguration, UserTable
+from services.auth import create_oauth_state_token, get_current_user
+from services.database import get_db
 from services.email_sync import EmailSyncService
 from services.oauth.google import google_oauth_service
 

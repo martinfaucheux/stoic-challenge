@@ -2,9 +2,9 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI
 
-from auth import get_current_user
 from models import UserTable
 from routes import auth_router, email_router
+from services.auth import get_current_user
 
 app = FastAPI(title="Email Security Tool")
 

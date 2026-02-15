@@ -4,8 +4,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import get_password_hash, verify_password
 from models import UserCreate, UserTable
+from services.auth import get_password_hash, verify_password
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[UserTable]:
