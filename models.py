@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 from sqlalchemy import (
@@ -39,10 +39,10 @@ class EmailTable(Base):
     recipient: Mapped[str] = mapped_column(
         String(255), nullable=False, index=True, comment="Primary recipient"
     )
-    recipients_cc: Mapped[List[str]] = mapped_column(
+    recipients_cc: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list, comment="CC'd email addresses"
     )
-    recipients_bcc: Mapped[List[str]] = mapped_column(
+    recipients_bcc: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list, comment="BCC'd email addresses"
     )
     subject: Mapped[str] = mapped_column(Text, nullable=False)
@@ -58,13 +58,13 @@ class EmailTable(Base):
         index=True,
         comment="When email was received",
     )
-    headers: Mapped[Dict[str, str]] = mapped_column(
+    headers: Mapped[dict[str, str]] = mapped_column(
         JSON, nullable=False, default=dict, comment="Email headers for validation"
     )
-    attachments: Mapped[List[Dict[str, Any]]] = mapped_column(
+    attachments: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list, comment="Attachment metadata"
     )
-    raw_data: Mapped[Dict[str, Any]] = mapped_column(
+    raw_data: Mapped[dict[str, Any]] = mapped_column(
         JSON, nullable=False, default=dict, comment="Original provider data"
     )
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
@@ -98,8 +98,8 @@ class Email(BaseModel):
     provider: str = Field(..., description="'google' or 'microsoft'")
     sender: str = Field(..., description="Email address")
     recipient: str = Field(..., description="Email address")
-    recipients_cc: List[str] = Field(default_factory=list, description="CC'd addresses")
-    recipients_bcc: List[str] = Field(
+    recipients_cc: list[str] = Field(default_factory=list, description="CC'd addresses")
+    recipients_bcc: list[str] = Field(
         default_factory=list, description="BCC'd addresses"
     )
     subject: str
@@ -107,13 +107,13 @@ class Email(BaseModel):
     body_text: str = Field(..., description="Plain text body")
     body_html: Optional[str] = Field(None, description="HTML version if available")
     received_at: datetime
-    headers: Dict[str, str] = Field(
+    headers: dict[str, str] = Field(
         default_factory=dict, description="Raw headers for additional validation"
     )
-    attachments: List[Dict[str, Any]] = Field(
-        default_factory=list, description="List of attachment metadata"
+    attachments: list[dict[str, Any]] = Field(
+        default_factory=list, description="list of attachment metadata"
     )
-    raw_data: Dict[str, Any] = Field(
+    raw_data: dict[str, Any] = Field(
         default_factory=dict,
         description="Original provider-specific data for debugging",
     )
@@ -158,7 +158,7 @@ class UserEmailConfiguration(Base):
     )
 
     # Provider-specific configuration (JSON for flexibility)
-    provider_config: Mapped[Dict[str, Any]] = mapped_column(
+    provider_config: Mapped[dict[str, Any]] = mapped_column(
         JSON,
         nullable=False,
         default=dict,

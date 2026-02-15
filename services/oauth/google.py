@@ -2,7 +2,7 @@
 
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -63,7 +63,7 @@ class GoogleOAuthService:
 
         return f"{self.AUTHORIZATION_BASE_URL}?{urlencode(params)}"
 
-    async def exchange_code_for_tokens(self, authorization_code: str) -> Dict[str, Any]:
+    async def exchange_code_for_tokens(self, authorization_code: str) -> dict[str, Any]:
         """
         Exchange authorization code for access and refresh tokens
 
@@ -91,7 +91,7 @@ class GoogleOAuthService:
             response.raise_for_status()
             return response.json()
 
-    async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
+    async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
         """
         Refresh access token using refresh token
 
@@ -118,7 +118,7 @@ class GoogleOAuthService:
             response.raise_for_status()
             return response.json()
 
-    async def get_user_info(self, access_token: str) -> Dict[str, Any]:
+    async def get_user_info(self, access_token: str) -> dict[str, Any]:
         """
         Get user information using access token
 
