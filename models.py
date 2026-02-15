@@ -13,7 +13,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from database import Base
@@ -81,6 +81,11 @@ class EmailTable(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    # Relationships
+    user: Mapped[Optional["UserTable"]] = relationship(
+        "UserTable", back_populates="emails"
     )
 
     __table_args__ = (
@@ -170,6 +175,11 @@ class UserEmailConfiguration(Base):
         DateTime(timezone=True), nullable=True, comment="Access token expiration time"
     )
 
+    # Relationships
+    user: Mapped["UserTable"] = relationship(
+        "UserTable", back_populates="email_configurations"
+    )
+
     __table_args__ = (
         UniqueConstraint("user_id", "provider", name="uq_user_email_config_provider"),
         Index("ix_user_email_configurations_user_id", "user_id"),
@@ -210,6 +220,14 @@ class UserTable(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    # Relationships
+    email_configurations: Mapped[list["UserEmailConfiguration"]] = relationship(
+        "UserEmailConfiguration", back_populates="user", cascade="all, delete-orphan"
+    )
+    emails: Mapped[list["EmailTable"]] = relationship(
+        "EmailTable", back_populates="user", cascade="all, delete-orphan"
     )
 
     __table_args__ = (

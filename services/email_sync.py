@@ -6,6 +6,7 @@ from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from config import settings
 from models import Email, EmailTable, UserEmailConfiguration, UserTable
@@ -39,13 +40,29 @@ class EmailSyncService:
         if max_count is None:
             max_count = settings.MAX_EMAILS_TO_FETCH
 
-        # Get user and their email configuration
-        user = await self._get_user(user_id)
+        # Get user with email configuration using eager loading (single query)
+        stmt = (
+            select(UserTable)
+            .options(
+                selectinload(
+                    UserTable.email_configurations.and_(
+                        UserEmailConfiguration.provider == provider
+                    )
+                )
+            )
+            .where(UserTable.id == user_id)
+        )
+
+        result = await self.db.execute(stmt)
+        user = result.scalar_one_or_none()
+
         if not user:
             raise ValueError(f"User {user_id} not found")
 
-        # TODO: use pre-fetching instead
-        config = await self._get_user_email_config(user_id, provider)
+        # Get config from the already loaded relationship
+        config = next(
+            (c for c in user.email_configurations if c.provider == provider), None
+        )
         if not config:
             raise ValueError(f"No {provider} configuration found for user {user_id}")
 
@@ -70,23 +87,6 @@ class EmailSyncService:
             "max_requested": max_count,
             "sync_timestamp": datetime.now(timezone.utc),
         }
-
-    async def _get_user(self, user_id: uuid.UUID) -> Optional[UserTable]:
-        """Get user by ID"""
-        stmt = select(UserTable).where(UserTable.id == user_id)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def _get_user_email_config(
-        self, user_id: uuid.UUID, provider: str
-    ) -> Optional[UserEmailConfiguration]:
-        """Get user's email configuration for the specified provider"""
-        stmt = select(UserEmailConfiguration).where(
-            UserEmailConfiguration.user_id == user_id,
-            UserEmailConfiguration.provider == provider,
-        )
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
 
     async def _get_fresh_access_token(
         self, config: UserEmailConfiguration
