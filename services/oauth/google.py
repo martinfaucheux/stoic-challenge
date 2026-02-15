@@ -1,7 +1,7 @@
 """Google OAuth integration service"""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlencode
 
@@ -169,7 +169,9 @@ class GoogleOAuthService:
 
         # Use the provided expiration time or calculate it from expires_in
         expires_at = (
-            datetime.utcnow() + timedelta(seconds=expires_in) if expires_in else None
+            datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            if expires_in
+            else None
         )
 
         # Encrypt tokens
@@ -262,7 +264,7 @@ class GoogleOAuthService:
             return None
 
         # Check if token is still valid (with 5 minute buffer)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if config.token_expires_at and config.token_expires_at > now + timedelta(
             minutes=5
         ):
@@ -289,6 +291,53 @@ class GoogleOAuthService:
             return token_response["access_token"]
         except httpx.HTTPError as e:
             raise ValueError(f"Failed to refresh access token: {e}")
+
+    def decrypt_tokens(
+        self,
+        encrypted_access_token: Optional[str],
+        encrypted_refresh_token: Optional[str],
+    ) -> dict[str, str]:
+        """Decrypt stored tokens
+
+        Args:
+            encrypted_access_token: Encrypted access token from database
+            encrypted_refresh_token: Encrypted refresh token from database
+
+        Returns:
+            dict with 'access_token' and 'refresh_token' keys
+        """
+        tokens = {}
+
+        if encrypted_access_token:
+            tokens["access_token"] = decrypt_token(encrypted_access_token)
+        else:
+            tokens["access_token"] = ""
+
+        if encrypted_refresh_token:
+            tokens["refresh_token"] = decrypt_token(encrypted_refresh_token)
+        else:
+            tokens["refresh_token"] = ""
+
+        return tokens
+
+    async def save_user_tokens(
+        self, db: AsyncSession, user_id: str, tokens: dict[str, Any]
+    ) -> None:
+        """Save refreshed tokens to database
+
+        Args:
+            db: Database session
+            user_id: User ID
+            tokens: Token response from OAuth refresh
+        """
+        await self.save_user_configuration(
+            db=db,
+            user_id=user_id,
+            access_token=tokens["access_token"],
+            refresh_token=tokens.get("refresh_token"),
+            expires_in=tokens.get("expires_in"),
+            token_type=tokens.get("token_type", "Bearer"),
+        )
 
 
 # Global service instance

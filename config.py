@@ -27,7 +27,7 @@ class Settings:
     GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
     # Email fetching settings
-    MAX_EMAILS_TO_FETCH = int(os.getenv("MAX_EMAILS_TO_FETCH", "10"))
+    MAX_EMAILS_TO_FETCH = int(os.getenv("MAX_EMAILS_TO_FETCH", "100"))
 
     # Database settings
     DATABASE_URL = os.getenv(

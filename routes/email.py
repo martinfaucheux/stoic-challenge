@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import create_oauth_state_token, get_current_user
 from database import get_db
 from models import EmailTable, UserEmailConfiguration, UserTable
+from services.email_sync import EmailSyncService
 from services.oauth.google import google_oauth_service
 
 router = APIRouter()
@@ -71,6 +72,45 @@ async def get_emails(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve emails: {str(e)}",
+        )
+
+
+@router.post("/emails/sync")
+async def sync_emails(
+    current_user: Annotated[UserTable, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    provider: str = Query(default="google", description="Email provider to sync"),
+    max_count: Optional[int] = Query(
+        default=None, le=500, description="Max emails to fetch"
+    ),
+):
+    """
+    Sync emails for the authenticated user
+
+    This endpoint will trigger the email synchronization process for the
+    authenticated user. It will check for configured email providers and
+    fetch new emails from those providers.
+    """
+    try:
+        # Initialize email sync service
+        email_sync_service = EmailSyncService(db)
+
+        # Sync emails for the user
+        result = await email_sync_service.sync_user_emails(
+            user_id=current_user.id, provider=provider, max_count=max_count
+        )
+
+        return {
+            "message": f"Email sync completed for {provider}",
+            "sync_result": result,
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync emails: {str(e)}",
         )
 
 
