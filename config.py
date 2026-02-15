@@ -15,6 +15,8 @@ class Settings:
     # Project root directory
     BASE_DIR = Path(__file__).parent
 
+    SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
+
     # Gmail API settings
     GMAIL_CREDENTIALS_FILE = os.getenv(
         "GMAIL_CREDENTIALS_FILE", str(BASE_DIR / "gmail" / "credentials.json")
@@ -31,6 +33,12 @@ class Settings:
     DATABASE_URL = os.getenv(
         "DATABASE_URL",
         "postgresql+asyncpg://postgres:postgres@localhost:5432/email_security",
+    )
+
+    # JWT settings
+    JWT_ENCRYPTION_ALGORITHM = os.getenv("JWT_ENCRYPTION_ALGORITHM", "HS256")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(
+        os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30")
     )
 
 
