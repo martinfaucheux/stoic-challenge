@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import DUMMY_HASH, get_password_hash, verify_password
+from auth import get_password_hash, verify_password
 from models import UserCreate, UserTable
 
 
@@ -18,7 +18,6 @@ async def authenticate_user(db: AsyncSession, username: str, password: str):
     """Authenticate user with database lookup"""
     user = await get_user_by_email(db, username)
     if not user:
-        verify_password(password, DUMMY_HASH)
         return False
     if not verify_password(password, user.password_hash):
         return False
