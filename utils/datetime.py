@@ -1,6 +1,9 @@
 import email
 import email.utils
+import logging
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 
 def parse_datetime(date_str: str) -> datetime:
@@ -48,5 +51,7 @@ def parse_datetime(date_str: str) -> datetime:
     except Exception:
         pass
 
-    # TODO: add warning
+    logger.warning(
+        f"Failed to parse date string: {date_str}. Defaulting to current time."
+    )
     return datetime.now(timezone.utc)

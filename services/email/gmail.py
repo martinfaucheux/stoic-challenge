@@ -1,6 +1,7 @@
 """Gmail API service for fetching emails"""
 
 import base64
+import logging
 from typing import Optional
 
 from google.oauth2.credentials import Credentials
@@ -9,6 +10,8 @@ from googleapiclient.errors import HttpError
 
 from models import Email
 from utils.datetime import parse_datetime
+
+logger = logging.getLogger(__name__)
 
 
 class GmailService:
@@ -61,13 +64,13 @@ class GmailService:
                     if email_data:
                         emails.append(email_data)
                 except Exception as e:
-                    print(f"Error fetching email {message['id']}: {e}")
+                    logger.error(f"Error fetching email {message['id']}: {e}")
                     continue
 
             return emails
 
         except HttpError as error:
-            print(f"Gmail API error: {error}")
+            logger.error(f"Gmail API error: {error}")
             raise Exception(f"Failed to fetch emails: {error}")
 
     async def _get_email_details(
@@ -121,7 +124,7 @@ class GmailService:
             )
 
         except Exception as e:
-            print(f"Error parsing email {message_id}: {e}")
+            logger.error(f"Error parsing email {message_id}: {e}")
             return None
 
     def _extract_body(self, payload: dict) -> tuple[str, Optional[str]]:

@@ -1,5 +1,6 @@
 """Email synchronization service"""
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -13,6 +14,8 @@ from config import settings
 from models import Email, EmailTable, UserEmailConfiguration, UserTable
 from services.email.gmail import GmailService
 from services.oauth.google import google_oauth_service
+
+logger = logging.getLogger(__name__)
 
 
 class EmailSyncService:
@@ -118,7 +121,7 @@ class EmailSyncService:
                 else:
                     return tokens["access_token"]
         except Exception as e:
-            print(f"Error getting fresh access token: {e}")
+            logger.error(f"Error getting fresh access token: {e}")
             return None
 
     async def _fetch_emails_from_provider(
@@ -197,7 +200,7 @@ class EmailSyncService:
 
         except Exception as e:
             await self.db.rollback()
-            print(f"Error during bulk email save: {e}")
+            logger.error(f"Error during bulk email save: {e}")
             # Fallback to individual saves if bulk operation fails
             return await self._save_emails_individually(emails, user_id)
 

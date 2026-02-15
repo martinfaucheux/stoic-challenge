@@ -1,3 +1,5 @@
+import logging
+import os
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
@@ -5,6 +7,14 @@ from fastapi import Depends, FastAPI
 from models import UserTable
 from routes import auth_router, email_router
 from services.auth import get_current_user
+
+# Configure logging
+log_level = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
+logging.basicConfig(
+    level=log_level,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("app.log")],
+)
 
 app = FastAPI(title="Email Security Tool")
 
