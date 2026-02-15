@@ -1,23 +1,77 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import create_oauth_state_token, get_current_user
 from database import get_db
-from models import UserEmailConfiguration, UserTable
+from models import EmailTable, UserEmailConfiguration, UserTable
 from services.oauth.google import google_oauth_service
 
 router = APIRouter()
 
 
 @router.get("/emails")
-async def get_emails(db: Annotated[AsyncSession, Depends(get_db)]):
-    """Get all emails from the database"""
-    # TODO: Implement email retrieval
-    return {"emails": []}
+async def get_emails(
+    current_user: Annotated[UserTable, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(
+        default=50, le=500, description="Maximum number of emails to return"
+    ),
+    offset: int = Query(default=0, ge=0, description="Number of emails to skip"),
+    provider: Optional[str] = Query(default=None, description="Filter by provider"),
+    sender: Optional[str] = Query(default=None, description="Filter by sender email"),
+):
+    """Get user's emails from the database with optional filtering and pagination"""
+    try:
+        # Build query for user's emails only
+        stmt = select(EmailTable).where(EmailTable.user_id == current_user.id)
+
+        # Apply optional filters
+        if provider:
+            stmt = stmt.where(EmailTable.provider == provider)
+        if sender:
+            stmt = stmt.where(EmailTable.sender.ilike(f"%{sender}%"))
+
+        # Order by received_at descending (most recent first)
+        stmt = stmt.order_by(EmailTable.received_at.desc())
+
+        # Apply pagination
+        stmt = stmt.offset(offset).limit(limit)
+
+        result = await db.execute(stmt)
+        emails = result.scalars().all()
+
+        # Convert to response format
+        return {
+            # TODO: work on a common pagination format
+            "emails": [
+                {
+                    "id": str(email.id),
+                    "message_id": email.message_id,
+                    "provider": email.provider,
+                    "sender": email.sender,
+                    "recipient": email.recipient,
+                    "subject": email.subject,
+                    "body_text": email.body_text[:500] + "..."
+                    if len(email.body_text) > 500
+                    else email.body_text,
+                    "received_at": email.received_at,
+                    "created_at": email.created_at,
+                }
+                for email in emails
+            ],
+            "count": len(emails),
+            "offset": offset,
+            "limit": limit,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve emails: {str(e)}",
+        )
 
 
 @router.post("/email-configuration/google")
