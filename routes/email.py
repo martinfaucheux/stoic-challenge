@@ -178,10 +178,3 @@ async def get_email_configurations(
             for config in configurations
         ]
     }
-
-
-@router.post("/webhook")
-async def receive_webhook(db: Annotated[AsyncSession, Depends(get_db)]):
-    """Receive email data from Google Workspace and Microsoft O365"""
-    # TODO: Implement webhook handling
-    return {"status": "received"}
