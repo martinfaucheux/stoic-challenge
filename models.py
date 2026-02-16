@@ -34,10 +34,10 @@ class EmailTable(Base):
         String(50), nullable=False, comment="Email provider (google, microsoft)"
     )
     sender: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True, comment="Sender email address"
+        String(255), nullable=False, comment="Sender email address"
     )
     recipient: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True, comment="Primary recipient"
+        String(255), nullable=False, comment="Primary recipient"
     )
     recipients_cc: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list, comment="CC'd email addresses"
@@ -55,7 +55,6 @@ class EmailTable(Base):
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        index=True,
         comment="When email was received",
     )
     headers: Mapped[dict[str, str]] = mapped_column(
@@ -70,7 +69,6 @@ class EmailTable(Base):
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
-        index=True,
         comment="User who owns this email",
     )
     created_at: Mapped[datetime] = mapped_column(
