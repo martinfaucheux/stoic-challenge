@@ -14,8 +14,9 @@ from sqlalchemy.pool import NullPool
 import models  # noqa Import models to register them with SQLAlchemy
 from main import app
 from models import UserTable
-from services.auth import create_access_token, get_password_hash
+from services.auth import create_access_token
 from services.database import Base, get_db  # Import Base from database service
+from tests.factories import EmailFactory, UserFactory
 
 # Models are imported above to register them with SQLAlchemy
 
@@ -88,38 +89,40 @@ async def async_client(async_db):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_user(async_db) -> UserTable:
-    """Create a test user in the database"""
-    user = UserTable(
-        email="test@example.com",
-        password_hash=get_password_hash("testpassword"),
-    )
-    async_db.add(user)
-    await async_db.commit()
-    await async_db.refresh(user)
-    return user
+async def user_factory(async_db) -> Callable[..., Awaitable[UserTable]]:
+    async def factory_create(**kwargs) -> UserTable:
+        return await UserFactory.create_async(async_db, **kwargs)
+
+    return factory_create
 
 
 @pytest_asyncio.fixture(scope="function")
-async def create_user(async_db) -> Callable[[str], Awaitable[UserTable]]:
+async def email_factory(async_db) -> Callable[..., Awaitable]:
+    async def factory_create(**kwargs):
+        return await EmailFactory.create_async(async_db, **kwargs)
+
+    return factory_create
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_user(user_factory) -> UserTable:
+    """Create a test user in the database"""
+    return await user_factory(email="test@example.com")
+
+
+@pytest_asyncio.fixture(scope="function")
+async def create_user(user_factory) -> Callable[[str], Awaitable[UserTable]]:
     """
-    User factory fixture that creates users with unique emails.
+    Backward-compatible user factory fixture.
 
     Usage:
         user = await create_user("user1@example.com")
     """
 
-    async def user_factory(email: str) -> UserTable:
-        user = UserTable(
-            email=email,
-            password_hash=get_password_hash("testpassword"),
-        )
-        async_db.add(user)
-        await async_db.commit()
-        await async_db.refresh(user)
-        return user
+    async def user_factory_wrapper(email: str) -> UserTable:
+        return await user_factory(email=email)
 
-    return user_factory
+    return user_factory_wrapper
 
 
 @pytest_asyncio.fixture(scope="function")

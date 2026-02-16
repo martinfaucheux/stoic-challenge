@@ -1,66 +1,61 @@
 from datetime import datetime, timedelta, timezone
 
-from models import EmailTable
-
 
 class TestListEmails:
-    async def test_list_emails(self, get_client, test_user, async_db):
+    async def test_list_emails(self, get_client, test_user, email_factory, async_db):
         """Test listing emails for authenticated user"""
         now = datetime.now(timezone.utc)
 
-        emails = [
-            EmailTable(
-                message_id="google-1",
-                provider="google",
-                sender="ceo@example.com",
-                recipient="finance@example.com",
-                recipients_cc=["assistant@example.com"],
-                recipients_bcc=[],
-                subject="Urgent wire request",
-                body_text="Please process the wire today.",
-                body_html=None,
-                received_at=now - timedelta(minutes=2),  # Oldest
-                headers={"X-Test": "1"},
-                attachments=[],
-                raw_data={"provider": "google"},
-                user_id=test_user.id,  # Associate with test user
-            ),
-            EmailTable(
-                message_id="microsoft-1",
-                provider="microsoft",
-                sender="supplier@example.com",
-                recipient="ap@example.com",
-                recipients_cc=[],
-                recipients_bcc=["audit@example.com"],
-                subject="Updated bank details",
-                body_text="Please update our bank account.",
-                body_html=None,
-                received_at=now - timedelta(minutes=1),  # Middle
-                headers={"X-Test": "2"},
-                attachments=[],
-                raw_data={"provider": "microsoft"},
-                user_id=test_user.id,  # Associate with test user
-            ),
-            EmailTable(
-                message_id="google-2",
-                provider="google",
-                sender="cfo@example.com",
-                recipient="finance@example.com",
-                recipients_cc=[],
-                recipients_bcc=[],
-                subject="Payment follow-up",
-                body_text="Following up on the payment.",
-                body_html=None,
-                received_at=now,  # Most recent
-                headers={"X-Test": "3"},
-                attachments=[],
-                raw_data={"provider": "google"},
-                user_id=test_user.id,  # Associate with test user
-            ),
-        ]
+        await email_factory(
+            message_id="google-1",
+            provider="google",
+            sender="ceo@example.com",
+            recipient="finance@example.com",
+            recipients_cc=["assistant@example.com"],
+            recipients_bcc=[],
+            subject="Urgent wire request",
+            body_text="Please process the wire today.",
+            body_html=None,
+            received_at=now - timedelta(minutes=2),  # Oldest
+            headers={"X-Test": "1"},
+            attachments=[],
+            raw_data={"provider": "google"},
+            user_id=test_user.id,
+        )
 
-        async_db.add_all(emails)
-        await async_db.commit()
+        await email_factory(
+            message_id="microsoft-1",
+            provider="microsoft",
+            sender="supplier@example.com",
+            recipient="ap@example.com",
+            recipients_cc=[],
+            recipients_bcc=["audit@example.com"],
+            subject="Updated bank details",
+            body_text="Please update our bank account.",
+            body_html=None,
+            received_at=now - timedelta(minutes=1),  # Middle
+            headers={"X-Test": "2"},
+            attachments=[],
+            raw_data={"provider": "microsoft"},
+            user_id=test_user.id,
+        )
+
+        await email_factory(
+            message_id="google-2",
+            provider="google",
+            sender="cfo@example.com",
+            recipient="finance@example.com",
+            recipients_cc=[],
+            recipients_bcc=[],
+            subject="Payment follow-up",
+            body_text="Following up on the payment.",
+            body_html=None,
+            received_at=now,  # Most recent
+            headers={"X-Test": "3"},
+            attachments=[],
+            raw_data={"provider": "google"},
+            user_id=test_user.id,
+        )
 
         # Get authenticated client for the test user
         client = get_client(test_user)
@@ -77,16 +72,16 @@ class TestListEmails:
         assert response_data["emails"][1]["message_id"] == "microsoft-1"  # Middle
         assert response_data["emails"][2]["message_id"] == "google-1"  # Oldest
 
-    async def test_user_isolation(self, get_client, create_user, async_db):
+    async def test_user_isolation(self, get_client, user_factory, email_factory):
         """Test that users can only see their own emails"""
         # Create two users with different emails
-        user1 = await create_user("user1@example.com")
-        user2 = await create_user("user2@example.com")
+        user1 = await user_factory(email="user1@example.com")
+        user2 = await user_factory(email="user2@example.com")
 
         now = datetime.now(timezone.utc)
 
         # Create emails for both users
-        user1_email = EmailTable(
+        await email_factory(
             message_id="user1-email",
             provider="google",
             sender="sender1@example.com",
@@ -103,7 +98,7 @@ class TestListEmails:
             user_id=user1.id,
         )
 
-        user2_email = EmailTable(
+        await email_factory(
             message_id="user2-email",
             provider="google",
             sender="sender2@example.com",
@@ -119,9 +114,6 @@ class TestListEmails:
             raw_data={},
             user_id=user2.id,
         )
-
-        async_db.add_all([user1_email, user2_email])
-        await async_db.commit()
 
         # Get client for user 1 and verify they only see their email
         client1 = get_client(user1)
