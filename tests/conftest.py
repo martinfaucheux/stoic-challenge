@@ -105,9 +105,11 @@ async def email_factory(async_db) -> Callable[..., Awaitable]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_user(user_factory) -> UserTable:
-    """Create a test user in the database"""
-    return await user_factory(email="test@example.com")
+async def test_user(async_db) -> UserTable:
+    """Create a test user in the database with a unique email"""
+
+    unique_email = f"test_{uuid.uuid4()}@example.com"
+    return await UserFactory.create_async(async_db, email=unique_email, commit=False)
 
 
 @pytest_asyncio.fixture(scope="function")
