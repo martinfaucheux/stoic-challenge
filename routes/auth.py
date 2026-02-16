@@ -1,7 +1,9 @@
+import logging
+import uuid
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +18,8 @@ from services.auth import (
 from services.database import get_db
 from services.oauth.google import google_oauth_service
 from services.user import authenticate_user, create_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -53,7 +57,6 @@ async def login_for_access_token(
 
 @router.get("/auth/callback/google")
 async def google_oauth_callback(
-    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     code: str | None = None,
     error: str | None = None,
@@ -92,8 +95,15 @@ async def google_oauth_callback(
                 detail="Invalid or expired state parameter",
             )
 
-        # Verify user exists in database
-        query = select(UserTable).where(UserTable.id == user_id)
+        try:
+            user_uuid = uuid.UUID(user_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid user ID in state parameter",
+            )
+
+        query = select(UserTable).where(UserTable.id == user_uuid)
         result = await db.execute(query)
         user = result.scalar_one_or_none()
         if not user:
@@ -113,7 +123,7 @@ async def google_oauth_callback(
         # Save the token configuration to the database
         await google_oauth_service.save_user_configuration(
             db=db,
-            user_id=user_id,
+            user_id=user_uuid,
             access_token=token_response["access_token"],
             refresh_token=token_response.get("refresh_token"),
             expires_in=token_response.get("expires_in"),
@@ -128,8 +138,12 @@ async def google_oauth_callback(
             "redirect_url": f"{settings.BASE_URL}/dashboard",  # Frontend dashboard URL
         }
 
+    except HTTPException:
+        # Re-raise HTTPExceptions as-is
+        raise
     except Exception as e:
+        logger.error(f"Error processing Google OAuth callback: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process OAuth callback: {str(e)}",
+            detail="Failed to process OAuth callback",
         )

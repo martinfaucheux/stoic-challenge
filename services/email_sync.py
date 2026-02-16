@@ -114,7 +114,7 @@ class EmailSyncService:
                     if refreshed_tokens:
                         # Update the config with new tokens
                         await google_oauth_service.save_user_tokens(
-                            self.db, str(config.user_id), refreshed_tokens
+                            self.db, config.user_id, refreshed_tokens
                         )
                         return refreshed_tokens["access_token"]
                     return None
