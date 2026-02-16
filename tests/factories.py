@@ -35,6 +35,31 @@ class AsyncFactory(factory.Factory):
 
         return obj
 
+    @classmethod
+    async def create_batch_async(
+        cls,
+        session: AsyncSession,
+        size: int,
+        *,
+        commit: bool = True,
+        **kwargs: Any,
+    ):
+        """Create multiple instances at once"""
+        objects = []
+        for _ in range(size):
+            obj = cls.build(**kwargs)
+            session.add(obj)
+            objects.append(obj)
+
+        if commit:
+            await session.commit()
+            for obj in objects:
+                await session.refresh(obj)
+        else:
+            await session.flush()
+
+        return objects
+
 
 class UserFactory(AsyncFactory):
     class Meta:
