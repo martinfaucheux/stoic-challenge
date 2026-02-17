@@ -4,6 +4,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlencode
+from uuid import UUID
 
 import httpx
 from sqlalchemy import select, update
@@ -141,7 +142,7 @@ class GoogleOAuthService:
     async def save_user_configuration(
         self,
         db: AsyncSession,
-        user_id: str,
+        user_id: UUID,
         access_token: str,
         refresh_token: str | None = None,
         expires_in: int | None = None,
@@ -237,7 +238,7 @@ class GoogleOAuthService:
         return config
 
     async def get_valid_access_token(
-        self, db: AsyncSession, user_id: str
+        self, db: AsyncSession, user_id: UUID
     ) -> Optional[str]:
         """
         Get valid access token for user, refreshing if necessary
@@ -321,7 +322,7 @@ class GoogleOAuthService:
         return tokens
 
     async def save_user_tokens(
-        self, db: AsyncSession, user_id: str, tokens: dict[str, Any]
+        self, db: AsyncSession, user_id: UUID, tokens: dict[str, Any]
     ) -> None:
         """Save refreshed tokens to database
 

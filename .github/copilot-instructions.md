@@ -7,29 +7,8 @@ The goal is to code the service retrieving the emails.
 ## Requirements
 
 - Build the service in Python with FastAPI
-- Use PostgreSQL with sqlalchemy for data storage
+- Use PostgreSQL
+  - use SQLAlchemy as the ORM
+  - use Alembic for migrations
 - Dockerize the service
-- Tests
-
-# implementation
-
-## Routes
-
-- `GET /emails(/id)` - Retrieve all emails
-  ```json
-  [
-    {
-      "id": 1,
-      "sender": "example@example.com",
-      "recipient": "recipient@example.com"
-    }
-  ]
-  ```
-- `POST /webhook` - Receive email data from Google Workspace and Microsoft O365
-
-# steps
-
-1. clarify what is the email format
-2. build a basic email scanner
-3. build the API to receive emails and store them in the database
-4. add webhook handling
+- Tests using pytest

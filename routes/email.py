@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -166,11 +166,10 @@ async def get_email_configurations(
         "configurations": [
             {
                 "provider": config.provider,
-                "configured_at": config.created_at,
                 "token_expires_at": config.token_expires_at,
                 "is_token_valid": (
                     config.token_expires_at is None
-                    or config.token_expires_at > datetime.utcnow()
+                    or config.token_expires_at > datetime.now(timezone.utc)
                 )
                 if config.token_expires_at
                 else None,
