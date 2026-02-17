@@ -258,8 +258,8 @@ class TestSyncEmails:
         ) as mock_sync:
             mock_sync.return_value = {
                 "synced_count": 5,
-                "provider": "google",
-                "message": "Successfully synced 5 emails",
+                "new_count": 3,
+                "error_count": 0,
             }
 
             client = get_client(test_user)
@@ -270,6 +270,8 @@ class TestSyncEmails:
         assert "message" in data
         assert "sync_result" in data
         assert data["sync_result"]["synced_count"] == 5
+        assert data["sync_result"]["new_count"] == 3
+        assert data["sync_result"]["error_count"] == 0
 
     async def test_sync_emails_with_max_count(self, get_client, test_user, async_db):
         """
@@ -293,8 +295,8 @@ class TestSyncEmails:
         ) as mock_sync:
             mock_sync.return_value = {
                 "synced_count": 3,
-                "provider": "google",
-                "message": "Successfully synced 3 emails",
+                "new_count": 2,
+                "error_count": 0,
             }
 
             client = get_client(test_user)
@@ -305,6 +307,8 @@ class TestSyncEmails:
         assert response.status_code == 200
         data = response.json()
         assert data["sync_result"]["synced_count"] == 3
+        assert data["sync_result"]["new_count"] == 2
+        assert data["sync_result"]["error_count"] == 0
         # Verify the mock was called with the correct parameters
         mock_sync.assert_called_once()
         call_kwargs = mock_sync.call_args[1]
@@ -335,14 +339,16 @@ class TestSyncEmails:
         ) as mock_sync:
             mock_sync.return_value = {
                 "synced_count": 2,
-                "provider": "google",
-                "message": "Successfully synced 2 emails",
+                "new_count": 1,
+                "error_count": 0,
             }
 
             client = get_client(test_user)
             response = await client.post("/emails/sync", params={"provider": "google"})
 
         assert response.status_code == 200
+        data = response.json()
+        assert data["sync_result"]["synced_count"] == 2
         # Verify the mock was called with the correct provider
         mock_sync.assert_called_once()
         call_kwargs = mock_sync.call_args[1]
