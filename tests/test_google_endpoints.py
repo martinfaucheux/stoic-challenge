@@ -11,12 +11,17 @@ from services.auth import create_oauth_state_token
 class TestGoogleEmailConfiguration:
     """Tests for the /email-configuration/google endpoint"""
 
-    async def test_configure_google_email_success(self, get_client, test_user):
+    @patch("routes.email.google_oauth_service.generate_authorization_url")
+    async def test_configure_google_email_success(
+        self, mock_auth_url, get_client, test_user
+    ):
         """
         GIVEN an authenticated user
         WHEN they request Google email configuration
         THEN they should receive an authorization URL
         """
+        mock_auth_url.return_value = "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&state=test_state"
+
         client = get_client(test_user)
         response = await client.post("/email-configuration/google")
 
@@ -28,12 +33,17 @@ class TestGoogleEmailConfiguration:
         # User ID should be encoded in the state JWT token
         assert "state=" in data["authorization_url"]
 
-    async def test_configure_google_email_includes_state(self, get_client, test_user):
+    @patch("routes.email.google_oauth_service.generate_authorization_url")
+    async def test_configure_google_email_includes_state(
+        self, mock_auth_url, get_client, test_user
+    ):
         """
         GIVEN an authenticated user
         WHEN they request Google email configuration
         THEN the authorization URL should include a state parameter
         """
+        mock_auth_url.return_value = "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&state=test_state"
+
         client = get_client(test_user)
         response = await client.post("/email-configuration/google")
 
