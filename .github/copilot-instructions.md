@@ -12,3 +12,10 @@ The goal is to code the service retrieving the emails.
   - use Alembic for migrations
 - Dockerize the service
 - Tests using pytest
+
+# Notes
+
+each command should be run with uv. For example
+
+- uv run pytest
+- uv run alembic revision --autogenerate -m "create email table"

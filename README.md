@@ -2,28 +2,28 @@
 
 FastAPI-based email security tool to detect potential financial fraud attempts in emails received via Google Workspace and Microsoft O365.
 
+Currently, it is possible to connect a Google Workspace account, fetch and persist emails in the database.
+
+Other notes regarded the assessment can be found in the [notes document](docs/NOTES.md).
+
 ## Requirements
 
+- uv as python package manager
 - Docker and Docker Compose
-- Gmail API credentials (see [gmail/GMAIL_SETUP.md](gmail/GMAIL_SETUP.md))
 
 ## Quick Start with Docker
 
-### 1. Setup Gmail Credentials
-
-Ensure you have `gmail/credentials.json` and `gmail/token.json` in place. See [gmail/GMAIL_SETUP.md](gmail/GMAIL_SETUP.md) for instructions.
-
-### 2. Configure Environment Variables
+### 1. Configure Environment Variables
 
 Copy the Docker environment template:
 
 ```bash
-cp .env.docker .env
+cp .env.example .env
 ```
 
 Edit `.env` if you need to customize database credentials or other settings.
 
-### 3. Build and Start Services
+### 2. Build and Start Services
 
 ```bash
 docker compose up -d
@@ -34,18 +34,22 @@ This starts:
 - PostgreSQL database on port 5432
 - FastAPI web server on port 8000
 
-### 4. Run Database Migrations
+### 3. Run Database Migrations
 
 ```bash
 docker compose run web alembic upgrade head
 ```
 
-### 5. Verify Services
+### 4. Set up Google OAuth Credentials
 
-Check the API health endpoint:
+Follow the instructions in the [Google OAuth Setup Guide](docs/GOOGLE_SERVER_SETUP.md) to create credentials and configure the callback URL.
+
+## Tests
+
+to run the tests, you can use the following command:
 
 ```bash
-curl http://localhost:8000/
+uv run web pytest -v
 ```
 
 ## Docker Commands
@@ -95,20 +99,4 @@ docker compose up -d --build
 
 ## API Endpoints
 
-- `GET /` - Health check
-- `GET /emails` - Retrieve all emails
-- `GET /emails/{id}` - Retrieve specific email
-- `POST /webhook` - Receive email webhooks
-
-## Development
-
-For local development without Docker, see [DATABASE_SETUP.md](DATABASE_SETUP.md).
-
-## Project Structure
-
-- `main.py` - FastAPI application
-- `models.py` - SQLAlchemy database models
-- `database.py` - Database configuration
-- `config.py` - Application configuration
-- `gmail/` - Gmail API integration
-- `alembic/` - Database migrations
+once running, the API doc is available at `http://localhost:8000/docs`.
